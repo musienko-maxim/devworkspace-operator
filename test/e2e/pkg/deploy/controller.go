@@ -92,3 +92,17 @@ func (w *Deployment) CustomResourceDefinitions() error {
 
 	return nil
 }
+
+func (w *Deployment) MakeDeploy() error {
+	cmd := exec.Command("make", "deploy")
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		_ =fmt.Errorf(err.Error())
+		return err
+	}
+
+	return nil
+
+}
+

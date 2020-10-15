@@ -50,23 +50,9 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	controller := deploy.NewDeployment(k8sClient)
 
-	err = controller.CreateNamespace()
+	err = controller.MakeDeploy()
 	if err != nil {
-		panic(err)
-	}
-
-	if err := controller.CreateAdditionalControllerResources(); err != nil {
-		fmt.Println("Failed to create additional controller resources in clusters")
-		panic(err)
-	}
-
-	if err := controller.CustomResourceDefinitions(); err != nil {
-		fmt.Println("Failed to add custom resources definitions to cluster")
-		panic(err)
-	}
-
-	if err := controller.DeployWorkspacesController(); err != nil {
-		fmt.Println("Failed to deploy workspace controller")
+		fmt.Println("Cannot deploy Web Operator")
 		panic(err)
 	}
 
