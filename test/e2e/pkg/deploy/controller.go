@@ -59,50 +59,34 @@ func (w *Deployment) DeployWorkspacesController() error {
 	return nil
 }
 
-func (w *Deployment) CreateAdditionalControllerResources() error {
-	//sed "s/\${NAMESPACE}/config.Namespace/g" <<< cat *.yaml | oc apply -f -
-	cmd := exec.Command(
-		"bash", "-c",
-		"sed 's/\\${NAMESPACE}/"+config.Namespace+"/g' <<< "+
-			"cat deploy/*.yaml | "+
-			"oc apply --namespace "+config.Namespace+" -f -")
+func DeployWebTerminalWorkspace(w *Deployment) error {
+	label := ""
+	cmd := exec.Command("oc", "apply", "--namespace", config.Namespace, "-f", "samples/webterminal.yaml")
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	return nil
-}
-
-func (w *Deployment) CustomResourceDefinitions() error {
-	devWorkspaceCRD := exec.Command("oc", "apply", "-f", "devworkspace-crds/deploy/crds")
-	output, err := devWorkspaceCRD.CombinedOutput()
 	if err != nil && !strings.Contains(string(output), "AlreadyExists") {
 		fmt.Println(err)
 		return err
 	}
 
-	eclipseCRD := exec.Command("oc", "apply", "-f", "deploy/crds")
-	output, err = eclipseCRD.CombinedOutput()
-	if err != nil && !strings.Contains(string(output), "AlreadyExists") {
-		fmt.Println(err)
+	deploy, err := w.kubeClient.WaitForPodRunningByLabel(label)
+	fmt.Println("Waiting controller pod to be ready")
+	if !deploy || err != nil {
+		fmt.Println("DevWorkspace Controller not deployed")
 		return err
 	}
-
 	return nil
 }
 
-func (w *Deployment) MakeDeploy() error {
+func (w *Deployment) DeployWithMakeFile() error {
 	cmd := exec.Command("make", "deploy")
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {
-		_ =fmt.Errorf(err.Error())
+		_ = fmt.Errorf(err.Error())
 		return err
 	}
 
 	return nil
 
 }
-

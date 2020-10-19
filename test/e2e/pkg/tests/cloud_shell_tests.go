@@ -21,9 +21,44 @@ import (
 )
 
 var _ = ginkgo.Describe("[Create Openshift Web Terminal Workspace]", func() {
+	k8sClient, err := client.NewK8sClient()
+
+	ginkgo.It("Wait devworkspace controller Pod", func(){
+	controllerLabel:= " app.kubernetes.io/name=devworkspace-controller"
+		if err != nil {
+			ginkgo.Fail("Failed to create k8s client: " + err.Error())
+			return
+		}
+		deploy, err := k8sClient.WaitForPodRunningByLabel(controllerLabel)
+		if err != nil {
+			ginkgo.Fail(fmt.Sprint("Cannot get the Pod status with label %s: \n" , controllerLabel) +  err.Error())
+			return
+		}
+		if !deploy {
+			fmt.Println("Devworkspace controller  didn't start properly")
+		}
+	})
+
+
+	ginkgo.It("Wait webhook controller Pod", func(){
+		controllerLabel:= "app.kubernetes.io/name=devworkspace-webhook-server"
+		if err != nil {
+			ginkgo.Fail("Failed to create k8s client: " + err.Error())
+			return
+		}
+		deploy, err := k8sClient.WaitForPodRunningByLabel(controllerLabel)
+		if err != nil {
+			ginkgo.Fail(fmt.Sprint("Cannot get the Pod status with label %s: \n" , controllerLabel) +  err.Error())
+			return
+		}
+		if !deploy {
+			fmt.Println("Devworkspace controller  didn't start properly")
+		}
+	})
+
 	ginkgo.It("Add openshift web terminal to cluster", func() {
 		label := "controller.devfile.io/workspace_name=web-terminal"
-		k8sClient, err := client.NewK8sClient()
+
 		if err != nil {
 			ginkgo.Fail("Failed to create k8s client: " + err.Error())
 			return
