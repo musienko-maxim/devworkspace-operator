@@ -2,21 +2,44 @@ package test
 
 import (
 	"context"
-	"fmt"
-	"github.com/devfile/api/tree/master/pkg/apis/workspaces/v1alpha1"
+	"os"
+
+	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 	_ "github.com/devfile/devworkspace-operator/test/e2e/pkg/tests"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/apimachinery/pkg/types"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+var log = logf.Log.WithName("test/cmd")
+
 func main() {
-	workspace := v1alpha1.{}
+	// Get a config to talk to the apiserver
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "Failed to create client config")
+		os.Exit(1)
+	}
 
-	fmt.Println(workspace)
+	client, err := crclient.New(cfg, crclient.Options{})
 
-	// c is a created client.Client
-	cl:= client.Client.Get(context.TODO(), client.ObjectKey{
+	if err != nil {
+		log.Error(err, "Failed to create client")
+		os.Exit(1)
+	}
+
+	namespacedName := types.NamespacedName{
+		Name:      "name",
 		Namespace: "namespace",
-		Name:      "name"}, workspace)
+	}
 
+	workspace := &devworkspace.DevWorkspace{}
+	err = client.Get(context.TODO(), namespacedName, workspace)
 
+	if err != nil {
+		panic(err)
+	}
+
+	// Here we go. We have workspace fetched
 }
