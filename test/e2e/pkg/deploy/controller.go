@@ -59,25 +59,6 @@ func (w *Deployment) DeployWorkspacesController() error {
 	return nil
 }
 
-func DeployWebTerminalWorkspace(w *Deployment) error {
-	label := ""
-	cmd := exec.Command("oc", "apply", "--namespace", config.Namespace, "-f", "samples/webterminal.yaml")
-	output, err := cmd.CombinedOutput()
-	fmt.Println(string(output))
-	if err != nil && !strings.Contains(string(output), "AlreadyExists") {
-		fmt.Println(err)
-		return err
-	}
-
-	deploy, err := w.kubeClient.WaitForPodRunningByLabel(label)
-	fmt.Println("Waiting controller pod to be ready")
-	if !deploy || err != nil {
-		fmt.Println("DevWorkspace Controller not deployed")
-		return err
-	}
-	return nil
-}
-
 func (w *Deployment) DeployWithMakeFile() error {
 	cmd := exec.Command("make", "deploy")
 	output, err := cmd.CombinedOutput()

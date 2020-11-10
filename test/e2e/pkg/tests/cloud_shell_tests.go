@@ -14,7 +14,7 @@ package tests
 
 import (
 	"fmt"
-
+	"github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/client"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -76,4 +76,9 @@ var _ = ginkgo.Describe("[Create Openshift Web Terminal Workspace]", func() {
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("Wait the running status of workspace", func() {
+		k8sClient.WaitDevWsStatus(v1alpha1.WorkspaceStatusRunning)
+	})
+
 })

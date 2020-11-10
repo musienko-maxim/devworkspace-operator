@@ -14,6 +14,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/devfile/devworkspace-operator/test/e2e/pkg/client"
 	"path/filepath"
 	"testing"
 
@@ -24,7 +25,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/devfile/devworkspace-operator/test/e2e/pkg/client"
 	_ "github.com/devfile/devworkspace-operator/test/e2e/pkg/tests"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
