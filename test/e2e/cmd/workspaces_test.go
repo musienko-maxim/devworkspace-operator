@@ -15,6 +15,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/client"
+
 	"path/filepath"
 	"testing"
 

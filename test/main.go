@@ -1,68 +1,67 @@
 package main
 
 import (
-	"context"
-	"github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
-	_ "github.com/devfile/devworkspace-operator/test/e2e/pkg/tests"
-	"github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/devfile/devworkspace-operator/test/e2e/pkg/client"
+	v1 "k8s.io/api/core/v1"
+	//"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd/api"
-	"os"
-	crclient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	//restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
+	"log"
+	"k8s.io/client-go/tools/clientcmd"
+	"io"
 )
 
-var (
-	Scheme             = runtime.NewScheme()
-	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
-	AddToScheme        = SchemeBuilder.AddToScheme
-	SchemeGroupVersion = schema.GroupVersion{Group: v1alpha1.SchemeGroupVersion.Group, Version: v1alpha1.SchemeGroupVersion.Version}
-)
-
-func main() {
-	if err := AddToScheme(scheme.Scheme); err != nil {
-		logrus.Fatalf("Failed to add CRD to scheme")
+func main (){
+k8sClient, err := client.NewK8sClient()
+	cmd := []string{
+		"sh",
+		"-c",
+		"echo Hello",
 	}
-	if err := api.AddToScheme(Scheme); err != nil {
-		logrus.Fatalf("Failed to add CRD to scheme")
-	}
-
-	cfg, err := config.GetConfig()
-	if err != nil {
-		logrus.Error(err, "Failed to create client config")
-		os.Exit(1)
-	}
-
-	client, err := crclient.New(cfg, crclient.Options{})
-
-	if err != nil {
-		logrus.Error(err, "Failed to create client")
-		os.Exit(1)
-	}
-
-	namespacedName := types.NamespacedName{
-		Name:      "web-terminal",
-		Namespace: "devworkspace-controller",
-	}
-
-	workspace := &v1alpha1.DevWorkspace{}
-	err = client.Get(context.TODO(), namespacedName, workspace)
-
-	logrus.Info("Workspace status is: " + workspace.Status.Phase)
-
-	if err != nil {
-		panic(err)
-	}
+if err != nil{
+	log.Fatal("Cannot create k8s klient inst")
+}
+k8sClient.Kube().
 }
 
-func addKnownTypes(scheme *runtime.Scheme) error {
-	scheme.AddKnownTypes(SchemeGroupVersion,
-		&v1alpha1.DevWorkspace{},
+func ExecCmdExample() error {
+	config, _ := clientcmd.BuildConfigFromFlags("", "")
+	cmd := []string{
+		"sh",
+		"-c",
+		"echo Hello",
+	}
+	k8sClient, err := client.NewK8sClient()
+
+
+	req := k8sClient.Kube().CoreV1().RESTClient().Post().Resource("pods").Name("").
+		Namespace("default").SubResource("exec")
+
+	option := &v1.PodExecOptions{
+		Command: cmd,
+		Stdin:   true,
+		Stdout:  true,
+		Stderr:  true,
+		TTY:     true,
+	}
+
+	req.VersionedParams(
+		option,
+		scheme.ParameterCodec,
 	)
-	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	if err != nil {
+		return err
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
