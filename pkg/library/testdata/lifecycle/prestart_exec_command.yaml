@@ -1,0 +1,21 @@
+name: "Should return init container with prestart exec command"
+
+input:
+  components:
+    - container:
+        name: test-container1
+        image: my-image
+    - container:
+        name: test-container2
+        image: my-image
+  commands:
+    - exec:
+        id: test_command
+        component: test-container1
+        command: "test_command"
+  events:
+    preStart:
+      - "test_command"
+
+output:
+  errRegexp: "only apply-type commands are supported in the prestart lifecycle binding"
