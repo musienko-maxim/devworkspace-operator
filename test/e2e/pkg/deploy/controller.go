@@ -14,9 +14,10 @@ package deploy
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"os/exec"
 	"strings"
-
+"context"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -24,11 +25,14 @@ import (
 )
 
 func (w *Deployment) CreateNamespace() error {
-	_, err := w.kubeClient.Kube().CoreV1().Namespaces().Create(&corev1.Namespace{
+	_, err := w.kubeClient.Kube().CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: config.Namespace,
 		},
-	})
+	}, metav1.CreateOptions{})
+	if errors.IsAlreadyExists(err) {
+		return nil
+	}
 	return err
 }
 

@@ -14,6 +14,7 @@ package cmd
 
 import (
 	"fmt"
+	"context"
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/client"
 
 	"path/filepath"
@@ -53,7 +54,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	err = controller.DeployWithMakeFile()
 	if err != nil {
-		fmt.Println("Cannot deploy Web Operator")
+		fmt.Println("Cannot deploy Web Operator using Make file")
 		panic(err)
 	}
 
@@ -67,11 +68,11 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 		_ = fmt.Errorf("Failed to uninstall workspace controller %s", err)
 	}
 
-	if err = k8sClient.Kube().AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(workspaceWebhook.MutateWebhookCfgName, &metav1.DeleteOptions{}); err != nil {
+	if err = k8sClient.Kube().AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(context.TODO(),workspaceWebhook.MutateWebhookCfgName, metav1.DeleteOptions{}); err != nil {
 		_ = fmt.Errorf("Failed to delete mutating webhook configuration %s", err)
 	}
 
-	if err = k8sClient.Kube().AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(workspaceWebhook.ValidateWebhookCfgName, &metav1.DeleteOptions{}); err != nil {
+	if err = k8sClient.Kube().AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(context.TODO(), workspaceWebhook.ValidateWebhookCfgName,  metav1.DeleteOptions{}); err != nil {
 		_ = fmt.Errorf("Failed to delete validating webhook configuration %s", err)
 	}
 }, func() {})

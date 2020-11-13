@@ -1,67 +1,41 @@
 package main
 
+//
+// Copyright (c) 2019-2020 Red Hat, Inc.
+// This program and the accompanying materials are made
+// available under the terms of the Eclipse Public License 2.0
+// which is available at https://www.eclipse.org/legal/epl-2.0/
+//
+// SPDX-License-Identifier: EPL-2.0
+//
+// Contributors:
+//   Red Hat, Inc. - initial API and implementation
+//
+
 import (
+	"fmt"
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/client"
-	v1 "k8s.io/api/core/v1"
-	//"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	//restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/remotecommand"
+	"github.com/devfile/devworkspace-operator/test/e2e/pkg/config"
 	"log"
-	"k8s.io/client-go/tools/clientcmd"
-	"io"
 )
 
-func main (){
-k8sClient, err := client.NewK8sClient()
-	cmd := []string{
-		"sh",
-		"-c",
-		"echo Hello",
-	}
-if err != nil{
-	log.Fatal("Cannot create k8s klient inst")
-}
-k8sClient.Kube().
-}
-
-func ExecCmdExample() error {
-	config, _ := clientcmd.BuildConfigFromFlags("", "")
-	cmd := []string{
-		"sh",
-		"-c",
-		"echo Hello",
-	}
+func main() {
+	config.Namespace = "devworkspace-controller"
 	k8sClient, err := client.NewK8sClient()
+	//podList, err := k8sClient.Kube().CoreV1().Pods(config.Namespace ).List(context.TODO(),metav1.ListOptions{})
 
-
-	req := k8sClient.Kube().CoreV1().RESTClient().Post().Resource("pods").Name("").
-		Namespace("default").SubResource("exec")
-
-	option := &v1.PodExecOptions{
-		Command: cmd,
-		Stdin:   true,
-		Stdout:  true,
-		Stderr:  true,
-		TTY:     true,
-	}
-
-	req.VersionedParams(
-		option,
-		scheme.ParameterCodec,
-	)
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 	if err != nil {
-		return err
-	}
-	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin:  stdin,
-		Stdout: stdout,
-		Stderr: stderr,
-	})
-	if err != nil {
-		return err
+		log.Fatal("Error!!!")
 	}
 
-	return nil
+	//for _, item := range  podList.Items {
+	//	if strings.HasPrefix(item.Name,"workspace"){
+	//		found:=item.Name
+	//		found2:=item.Spec.Containers
+	//		fmt.Println(found, found2)
+	//	}
+	//
+	//}
+	podName :=k8sClient.FindPodInNamespaceByNamePrefix("workspace")
+fmt.Print(client.ExecCommandInPod(podName, "dev", "echo"))
 }

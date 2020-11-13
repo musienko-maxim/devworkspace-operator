@@ -16,11 +16,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
+	"github.com/apex/log"
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/config"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"strings"
+	"time"
 )
 
 func (w *K8sClient) WaitForPodRunningByLabel(label string) (deployed bool, err error) {
@@ -66,8 +68,8 @@ func (w *K8sClient) WaitForRunningPodBySelector(namespace, selector string, time
 
 // Returns the list of currently scheduled or running pods in `namespace` with the given selector
 func (w *K8sClient) ListPods(namespace, selector string) (*v1.PodList, error) {
-	listOptions := metav1.ListOptions{LabelSelector: selector}
-	podList, err := w.Kube().CoreV1().Pods(namespace).List(context.TODO(), listOptions)
+	//listOptions := metav1.ListOptions{LabelSelector: selector}
+	podList, err := w.Kube().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
 
 	if err != nil {
 		return nil, err
@@ -96,5 +98,25 @@ func (w *K8sClient) isPodRunning(podName, namespace string) wait.ConditionFunc {
 			return false, nil
 		}
 		return false, nil
+	}
+}
+func (w *K8sClient) FindPodInNamespaceByNamePrefix(namePrefix string) string {
+	var podName string
+
+	podList, err := w.Kube().CoreV1().Pods(config.Namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	for _, item := range podList.Items {
+		if strings.HasPrefix(item.Name, namePrefix) {
+			podName = item.Name
+
+		}
+	}
+	if podName != "" {
+		return podName
+	} else {
+		log.Fatal("Cannot find the Pod in dedicated namespace")
+		return podName
 	}
 }

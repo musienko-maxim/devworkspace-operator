@@ -81,4 +81,6 @@ var _ = ginkgo.Describe("[Create Openshift Web Terminal Workspace]", func() {
 				client.WaitDevWsStatus(v1alpha1.WorkspaceStatusRunning)
 	})
 
+
+
 })

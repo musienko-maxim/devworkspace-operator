@@ -14,6 +14,7 @@ package client
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 	"time"
@@ -34,4 +35,14 @@ func (w *K8sClient) OcApplyWorkspace(filePath string) (err error) {
 		fmt.Println(err)
 	}
 	return err
+}
+//exec a command in the defined pod and container 
+func ExecCommandInPod(podName string, containerName string) (commandResult string) {
+	cmd := exec.Command("oc", "exec", podName, "--namespace", config.Namespace, "-c", containerName, "echo", "hello")
+	outBytes, err := cmd.CombinedOutput()
+	output := string(outBytes)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	return output
 }
