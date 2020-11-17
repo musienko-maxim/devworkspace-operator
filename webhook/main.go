@@ -33,7 +33,7 @@ import (
 var log = logf.Log.WithName("cmd")
 
 func main() {
-	logf.SetLogger(zap.New(zap.UseDevMode(false)))
+	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
@@ -53,13 +53,13 @@ func main() {
 		Namespace: namespace,
 	})
 	if err != nil {
-		log.Error(err, "Failed to get create manager")
+		log.Error(err, "Failed to create manager")
 		os.Exit(1)
 	}
 
 	err = createWebhooks(mgr, cfg)
 	if err != nil {
-		log.Error(err, "Failed to get create webhooks")
+		log.Error(err, "Failed to create webhooks")
 		os.Exit(1)
 	}
 

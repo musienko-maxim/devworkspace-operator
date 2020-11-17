@@ -13,11 +13,13 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"os/exec"
 	"strings"
-"context"
+
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -38,7 +40,7 @@ func (w *Deployment) CreateNamespace() error {
 
 func (w *Deployment) DeployWorkspacesController() error {
 	label := "app.kubernetes.io/name=devworkspace-controller"
-	cmd := exec.Command("oc", "apply", "--namespace", config.Namespace, "-f", "deploy")
+	cmd := exec.Command("make", "install")
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil && !strings.Contains(string(output), "AlreadyExists") {
@@ -63,15 +65,12 @@ func (w *Deployment) DeployWorkspacesController() error {
 	return nil
 }
 
-func (w *Deployment) DeployWithMakeFile() error {
-	cmd := exec.Command("make", "deploy")
-	output, err := cmd.CombinedOutput()
-	fmt.Println(string(output))
-	if err != nil {
-		_ = fmt.Errorf(err.Error())
+func (w *Deployment) CustomResourceDefinitions() error {
+	devWorkspaceCRD := exec.Command("make", "install_crds")
+	output, err := devWorkspaceCRD.CombinedOutput()
+	if err != nil && !strings.Contains(string(output), "AlreadyExists") {
+		fmt.Println(err)
 		return err
 	}
-
 	return nil
-
 }
