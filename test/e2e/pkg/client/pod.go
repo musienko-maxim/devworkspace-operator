@@ -14,7 +14,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/apex/log"
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/config"
@@ -32,9 +31,9 @@ func (w *K8sClient) WaitForPodRunningByLabel(label string) (deployed bool, err e
 	for {
 		select {
 		case <-timeout:
-			return false, errors.New("timed out")
+			return false, err
 		case <-tick:
-			err := w.WaitForRunningPodBySelector(config.Namespace, label, 3*time.Minute)
+			err := w.WaitForRunningPodBySelector(config.Namespace, label, time.Minute)
 			if err == nil {
 				return true, nil
 			}
@@ -46,7 +45,6 @@ func (w *K8sClient) WaitForPodRunningByLabel(label string) (deployed bool, err e
 // Returns an error if no pods are found or not all discovered pods enter running state.
 func (w *K8sClient) WaitForRunningPodBySelector(namespace, selector string, timeout time.Duration) error {
 	podList, err := w.ListPods(namespace, selector)
-	w.kubeClient.CoreV1().RESTClient().Post().Resource("Pod")
 	if err != nil {
 		return err
 	}
@@ -68,8 +66,8 @@ func (w *K8sClient) WaitForRunningPodBySelector(namespace, selector string, time
 
 // Returns the list of currently scheduled or running pods in `namespace` with the given selector
 func (w *K8sClient) ListPods(namespace, selector string) (*v1.PodList, error) {
-	//listOptions := metav1.ListOptions{LabelSelector: selector}
-	podList, err := w.Kube().CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	listOptions := metav1.ListOptions{LabelSelector: selector}
+	podList, err := w.Kube().CoreV1().Pods(namespace).List(context.TODO(), listOptions)
 
 	if err != nil {
 		return nil, err
@@ -103,14 +101,13 @@ func (w *K8sClient) isPodRunning(podName, namespace string) wait.ConditionFunc {
 func (w *K8sClient) FindPodInNamespaceByNamePrefix(namePrefix string) string {
 	var podName string
 
-	podList, err := w.Kube().CoreV1().Pods(config.Namespace).List(context.TODO(), metav1.ListOptions{})
+	podList, err := w.Kube().CoreV1().Pods("user-devvs").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Error(err.Error())
 	}
 	for _, item := range podList.Items {
 		if strings.HasPrefix(item.Name, namePrefix) {
 			podName = item.Name
-
 		}
 	}
 	if podName != "" {

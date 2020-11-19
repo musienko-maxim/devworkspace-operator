@@ -24,7 +24,7 @@ var _ = ginkgo.Describe("[Create Openshift Web Terminal Workspace]", func() {
 	k8sClient, err := client.NewK8sClient()
 
 	ginkgo.It("Wait devworkspace controller Pod", func(){
-	controllerLabel:= " app.kubernetes.io/name=devworkspace-controller"
+	controllerLabel:= "app.kubernetes.io/name=devworkspace-controller"
 		if err != nil {
 			ginkgo.Fail("Failed to create k8s client: " + err.Error())
 			return
@@ -52,33 +52,43 @@ var _ = ginkgo.Describe("[Create Openshift Web Terminal Workspace]", func() {
 			return
 		}
 		if !deploy {
-			fmt.Println("Devworkspace controller  didn't start properly")
+			fmt.Println("Devworkspace webhook  didn't start properly")
 		}
 	})
 
 	ginkgo.It("Add openshift web terminal to cluster", func() {
 		label := "controller.devfile.io/workspace_name=web-terminal"
 
+		client.LoginIntoClusterWithCredentials("developer", "developer", "https://api.crc.testing:6443")
+
+		client.CreateProjectWithOcClient("web-terminal", "webterminal-test-project", "web-terminal")
+
+		userK8sClient, err := client.NewK8sClient()
+
 		if err != nil {
-			ginkgo.Fail("Failed to create k8s client: " + err.Error())
+			ginkgo.Fail("Failed to create userK8sClient client: ")
 			return
 		}
-		err = k8sClient.OcApplyWorkspace("samples/web-terminal.yaml")
+
+		err = userK8sClient.OcApplyWorkspace("samples/web-terminal.yaml")
+
+		if err != nil {
+			ginkgo.Fail("Failed to create userK8sClient client: ")
+			return
+		}
+
 		if err != nil {
 			ginkgo.Fail("Failed to create openshift web terminal workspace: " + err.Error())
 			return
 		}
-		deploy, err := k8sClient.WaitForPodRunningByLabel(label)
 
+		deploy, err := userK8sClient.WaitForPodRunningByLabel(label)
+		client.WaitDevWsStatus(v1alpha1.WorkspaceStatusRunning)
 		if !deploy {
 			fmt.Println("Openshift Web terminal workspace didn't start properly")
 		}
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	})
-
-	ginkgo.It("Wait the running status of workspace", func() {
-				client.WaitDevWsStatus(v1alpha1.WorkspaceStatusRunning)
 	})
 
 

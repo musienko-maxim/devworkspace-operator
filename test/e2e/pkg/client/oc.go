@@ -36,13 +36,48 @@ func (w *K8sClient) OcApplyWorkspace(filePath string) (err error) {
 	}
 	return err
 }
-//exec a command in the defined pod and container 
-func ExecCommandInPod(podName string, containerName string) (commandResult string) {
-	cmd := exec.Command("oc", "exec", podName, "--namespace", config.Namespace, "-c", containerName, "echo", "hello")
+
+//launch 'exec' oc command in the defined pod and container
+func ExecCommandInPod(podName string, containerName string, commandArgs ...string) (commandResult string) {
+	commandsArg := append([]string{"exec", podName, "--namespace", "user-devvs", "-c", containerName}, commandArgs...)
+	cmd := exec.Command("oc", commandsArg...)
+	outBytes, err := cmd.CombinedOutput()
+	output := string(outBytes)
+	if (err != nil) && (!strings.Contains(output, "denied the request: The only workspace creator has exec access")) {
+		log.Fatal(err, "Cannot execute command in the dedicated container:", output)
+	}
+	return output
+}
+
+// login into a cluster using oc client ant return output of executed command
+func LoginIntoClusterWithCredentials(loginName string, loginPass string, clusterConsoleUrl string) string {
+	cmd := exec.Command("oc", "login", "-u", loginName, "-p", loginPass, clusterConsoleUrl)
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal("Cannot login into the cluster with oc client", err)
+	}
+	return output
+}
+
+//create a project under login user using oc client
+func CreateProjectWithOcClient(projectName string, description string, displayName string) string {
+	cmd := exec.Command("oc", "new-project", projectName, "--description="+description, "--display-name="+displayName)
+	outBytes, err := cmd.CombinedOutput()
+	output := string(outBytes)
+	if err != nil {
+		log.Fatalf("Cannot create the project %s using oc client %s, %s", projectName, err, output)
+	}
+	return output
+}
+
+// login into a cluster using oc client and return output of executed command
+func LoginIntoClusterWithToken(token string, clusterConsoleUrl string) string {
+	cmd := exec.Command("oc", "login", "--token", token, "--server=", clusterConsoleUrl)
+	outBytes, err := cmd.CombinedOutput()
+	output := string(outBytes)
+	if err != nil {
+		log.Fatal("Cannot login into the cluster with oc client", err)
 	}
 	return output
 }

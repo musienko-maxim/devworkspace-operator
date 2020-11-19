@@ -13,6 +13,7 @@
 package client
 
 import (
+	"fmt"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
@@ -29,6 +30,7 @@ func NewK8sClient() (*K8sClient, error) {
 	}
 	client, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
+		fmt.Println(">>>>>>>>>>>>>>>>>>>>>",err)
 		return nil, err
 	}
 

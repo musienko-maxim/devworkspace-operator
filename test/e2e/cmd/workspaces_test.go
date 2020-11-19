@@ -51,8 +51,8 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}
 
 	controller := deploy.NewDeployment(k8sClient)
+	err = controller.DeployWorkspacesController()
 
-	err = controller.DeployWithMakeFile()
 	if err != nil {
 		fmt.Println("Cannot deploy Web Operator using Make file")
 		panic(err)
