@@ -15,13 +15,14 @@ package client
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/apex/log"
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/config"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"strings"
-	"time"
 )
 
 func (w *K8sClient) WaitForPodRunningByLabel(label string) (deployed bool, err error) {

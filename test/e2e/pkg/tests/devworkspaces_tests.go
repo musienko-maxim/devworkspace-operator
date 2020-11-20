@@ -14,41 +14,41 @@ package tests
 
 import (
 	"fmt"
+
 	"github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/client"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 )
 
-var _ = ginkgo.Describe("[Create Openshift Web Terminal Workspace]", func() {
+var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
 	k8sClient, err := client.NewK8sClient()
 
-	ginkgo.It("Wait devworkspace controller Pod", func(){
-	controllerLabel:= "app.kubernetes.io/name=devworkspace-controller"
+	ginkgo.It("Wait devworkspace controller Pod", func() {
+		controllerLabel := "app.kubernetes.io/name=devworkspace-controller"
 		if err != nil {
 			ginkgo.Fail("Failed to create k8s client: " + err.Error())
 			return
 		}
 		deploy, err := k8sClient.WaitForPodRunningByLabel(controllerLabel)
 		if err != nil {
-			ginkgo.Fail(fmt.Sprint("Cannot get the Pod status with label %s: \n" , controllerLabel) +  err.Error())
+			ginkgo.Fail(fmt.Sprintf("cannot get the Pod status with label %s: %s", controllerLabel, err.Error()))
 			return
 		}
 		if !deploy {
-			fmt.Println("Devworkspace controller  didn't start properly")
+			fmt.Println("DevWorkspace controller  didn't start properly")
 		}
 	})
 
-
-	ginkgo.It("Wait webhook controller Pod", func(){
-		controllerLabel:= "app.kubernetes.io/name=devworkspace-webhook-server"
+	ginkgo.It("Wait webhook controller Pod", func() {
+		controllerLabel := "app.kubernetes.io/name=devworkspace-webhook-server"
 		if err != nil {
 			ginkgo.Fail("Failed to create k8s client: " + err.Error())
 			return
 		}
 		deploy, err := k8sClient.WaitForPodRunningByLabel(controllerLabel)
 		if err != nil {
-			ginkgo.Fail(fmt.Sprint("Cannot get the Pod status with label %s: \n" , controllerLabel) +  err.Error())
+			ginkgo.Fail(fmt.Sprintf("cannot get the Pod status with label %s: %s", controllerLabel, err.Error()))
 			return
 		}
 		if !deploy {
@@ -56,7 +56,7 @@ var _ = ginkgo.Describe("[Create Openshift Web Terminal Workspace]", func() {
 		}
 	})
 
-	ginkgo.It("Add openshift web terminal to cluster", func() {
+	ginkgo.It("Add OpenShift web terminal to cluster", func() {
 		label := "controller.devfile.io/workspace_name=web-terminal"
 
 		client.LoginIntoClusterWithCredentials("developer", "developer", "https://api.crc.testing:6443")
@@ -73,24 +73,17 @@ var _ = ginkgo.Describe("[Create Openshift Web Terminal Workspace]", func() {
 		err = userK8sClient.OcApplyWorkspace("samples/web-terminal.yaml")
 
 		if err != nil {
-			ginkgo.Fail("Failed to create userK8sClient client: ")
+			ginkgo.Fail("Failed to create OpenShift web terminal workspace: " + err.Error())
 			return
 		}
 
-		if err != nil {
-			ginkgo.Fail("Failed to create openshift web terminal workspace: " + err.Error())
-			return
-		}
+		deploy, err := client.WaitDevWsStatus(v1alpha1.WorkspaceStatusRunning)
 
-		deploy, err := userK8sClient.WaitForPodRunningByLabel(label)
-		client.WaitDevWsStatus(v1alpha1.WorkspaceStatusRunning)
 		if !deploy {
-			fmt.Println("Openshift Web terminal workspace didn't start properly")
+			fmt.Println("OpenShift Web terminal workspace didn't start properly")
 		}
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
-
-
 
 })

@@ -1,8 +1,23 @@
+//
+// Copyright (c) 2019-2020 Red Hat, Inc.
+// This program and the accompanying materials are made
+// available under the terms of the Eclipse Public License 2.0
+// which is available at https://www.eclipse.org/legal/epl-2.0/
+//
+// SPDX-License-Identifier: EPL-2.0
+//
+// Contributors:
+//   Red Hat, Inc. - initial API and implementation
+//
+
 package client
 
 import (
 	"context"
 	"errors"
+	"os"
+	"time"
+
 	"github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,10 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"os"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	configs "sigs.k8s.io/controller-runtime/pkg/client/config"
-	"time"
 )
 
 var (
@@ -25,7 +38,7 @@ var (
 )
 
 //get workspace current dev workspace status from the Custom Resource object
-func  GetDevWsStatus() (status v1alpha1.WorkspacePhase) {
+func GetDevWsStatus() (*v1alpha1.WorkspacePhase, error) {
 	if err := AddToScheme(scheme.Scheme); err != nil {
 		logrus.Fatalf("Failed to add CRD to scheme")
 	}
@@ -55,9 +68,9 @@ func  GetDevWsStatus() (status v1alpha1.WorkspacePhase) {
 	err = client.Get(context.TODO(), namespacedName, workspace)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return workspace.Status.Phase
+	return &workspace.Status.Phase, nil
 }
 
 func WaitDevWsStatus(expectedStatus v1alpha1.WorkspacePhase) (bool, error) {
@@ -69,9 +82,12 @@ func WaitDevWsStatus(expectedStatus v1alpha1.WorkspacePhase) (bool, error) {
 		case <-timeout:
 			return false, errors.New("timed out")
 		case <-tick:
-			logrus.Info("Now current status of developer workspace is: " + GetDevWsStatus())
-			currentStatus := GetDevWsStatus()
-			if currentStatus == expectedStatus {
+			currentStatus, err := GetDevWsStatus()
+			logrus.Info("Now current status of developer workspace is: " + *currentStatus)
+			if err != nil {
+				return false, err
+			}
+			if *currentStatus == expectedStatus {
 				return true, nil
 			}
 		}
@@ -85,4 +101,3 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }
-
