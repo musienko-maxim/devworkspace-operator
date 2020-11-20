@@ -23,7 +23,7 @@ import (
 )
 
 func (w *K8sClient) OcApplyWorkspace(filePath string) (err error) {
-	cmd := exec.Command("oc", "apply", "--namespace", config.Namespace, "-f", filePath)
+	cmd := exec.Command("KUBECONFIG="+w.kubeCfgFile, "oc", "apply", "--namespace", config.Namespace, "-f", filePath)
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
 	if strings.Contains(output, "failed calling webhook") {
@@ -35,6 +35,18 @@ func (w *K8sClient) OcApplyWorkspace(filePath string) (err error) {
 		fmt.Println(err)
 	}
 	return err
+}
+
+//launch 'exec' oc command in the defined pod and container
+func (w *K8sClient) ExecCommandInPod(podName string, containerName string, commandArgs ...string) (commandResult string) {
+	ocExecCommand := append([]string{"oc", "exec", podName, "--namespace", "user-devvs", "-c", containerName}, commandArgs...)
+	cmd := exec.Command("KUBECONFIG="+w.kubeCfgFile, ocExecCommand...)
+	outBytes, err := cmd.CombinedOutput()
+	output := string(outBytes)
+	if (err != nil) && (!strings.Contains(output, "denied the request: The only workspace creator has exec access")) {
+		log.Fatal(err, "Cannot execute command in the dedicated container:", output)
+	}
+	return output
 }
 
 //launch 'exec' oc command in the defined pod and container

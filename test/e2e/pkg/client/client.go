@@ -20,7 +20,8 @@ import (
 )
 
 type K8sClient struct {
-	kubeClient *kubernetes.Clientset
+	kubeClient  *kubernetes.Clientset
+	kubeCfgFile string // generate when client is created and store config there
 }
 
 // NewK8sClient creates kubernetes client wrapper with helper functions and direct access to k8s go client
@@ -36,6 +37,44 @@ func NewK8sClient() (*K8sClient, error) {
 	}
 
 	h := &K8sClient{kubeClient: client}
+	return h, nil
+}
+
+func NewK8sClientWithContext(contextFile string) (*K8sClient, error) {
+	//generate kubeconfig file name
+	kubeCfgFile := "/tmp/admin123-kubeconfig"
+
+	//copy contextFile to kubeCfgFile
+
+	cfg, err := config.GetConfigWithContext(kubeCfgFile)
+	if err != nil {
+		return nil, err
+	}
+	client, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		fmt.Println(">>>>>>>>>>>>>>>>>>>>>", err)
+		return nil, err
+	}
+	h := &K8sClient{kubeClient: client, kubeCfgFile: kubeCfgFile}
+	return h, nil
+}
+
+func NewK8sClientWithCredentials(login, password string) (*K8sClient, error) {
+	//generate kubeconfig file name
+	kubeCfgFile := "/tmp/admin123-kubeconfig"
+
+	//execute: KUBECONFIG=/tmp/admin123-kubeconfig oc login -u $login -p $password --insecure-skip-tls-verify=true https://api.crc.testing:6443
+
+	cfg, err := config.GetConfigWithContext(kubeCfgFile)
+	if err != nil {
+		return nil, err
+	}
+	client, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		fmt.Println(">>>>>>>>>>>>>>>>>>>>>", err)
+		return nil, err
+	}
+	h := &K8sClient{kubeClient: client, kubeCfgFile: kubeCfgFile}
 	return h, nil
 }
 

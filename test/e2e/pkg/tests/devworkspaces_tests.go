@@ -22,6 +22,8 @@ import (
 )
 
 var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
+	//devK8sClient, err := client.NewK8sClientWithCredentials("developer", "developer")
+	//adminK8sClient, err := client.NewK8sClientWithConfigFile("~/.kube/config")
 	k8sClient, err := client.NewK8sClient()
 
 	ginkgo.It("Wait devworkspace controller Pod", func() {
@@ -30,6 +32,7 @@ var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
 			ginkgo.Fail("Failed to create k8s client: " + err.Error())
 			return
 		}
+		//deploy, err := adminK8sClient.WaitForPodRunningByLabel(controllerLabel)
 		deploy, err := k8sClient.WaitForPodRunningByLabel(controllerLabel)
 		if err != nil {
 			ginkgo.Fail(fmt.Sprintf("cannot get the Pod status with label %s: %s", controllerLabel, err.Error()))
@@ -57,10 +60,9 @@ var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
 	})
 
 	ginkgo.It("Add OpenShift web terminal to cluster", func() {
-		label := "controller.devfile.io/workspace_name=web-terminal"
-
 		client.LoginIntoClusterWithCredentials("developer", "developer", "https://api.crc.testing:6443")
 
+		//devK8sClient.CreateProject("web-terminal", "webterminal-test-project", "web-terminal")
 		client.CreateProjectWithOcClient("web-terminal", "webterminal-test-project", "web-terminal")
 
 		userK8sClient, err := client.NewK8sClient()
@@ -70,6 +72,7 @@ var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
 			return
 		}
 
+		//devK8sClient.OcApplyWorkspace("samples/web-terminal.yaml")
 		err = userK8sClient.OcApplyWorkspace("samples/web-terminal.yaml")
 
 		if err != nil {
@@ -77,6 +80,7 @@ var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
 			return
 		}
 
+		//TODO Apart from waiting to Running state it makes sense to early fail when status changed to failed.
 		deploy, err := client.WaitDevWsStatus(v1alpha1.WorkspaceStatusRunning)
 
 		if !deploy {
