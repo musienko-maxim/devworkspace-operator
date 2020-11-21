@@ -63,11 +63,12 @@ func ExecCommandInPod(podName string, containerName string, commandArgs ...strin
 
 // login into a cluster using oc client ant return output of executed command
 func LoginIntoClusterWithCredentials(loginName string, loginPass string, clusterConsoleUrl string) string {
-	cmd := exec.Command("oc", "login", "-u", loginName, "-p", loginPass, clusterConsoleUrl)
+	cmd := exec.Command("bash", "-c", "KUBECONFIG=/tmp/admin123-kubeconfig oc login -u developer -p developer --insecure-skip-tls-verify=true https://api.crc.testing:6443")
+
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
 	if err != nil {
-		log.Fatal("Cannot login into the cluster with oc client", err)
+		log.Fatal("Cannot login into the cluster with oc client ", err, output)
 	}
 	return output
 }
@@ -93,3 +94,14 @@ func LoginIntoClusterWithToken(token string, clusterConsoleUrl string) string {
 	}
 	return output
 }
+
+func ExecCommand(args ...string) string {
+	cmd := exec.Command("oc", args...)
+	outBytes, err := cmd.CombinedOutput()
+	output := string(outBytes)
+	if err != nil {
+		log.Fatal("Cannot perform oc command properly ", err, output)
+	}
+	return output
+}
+
