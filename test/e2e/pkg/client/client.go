@@ -13,9 +13,13 @@
 package client
 
 import (
+	"fmt"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"log"
+	"os/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
 )
 
 type K8sClient struct {
@@ -37,13 +41,10 @@ func NewK8sClient() (*K8sClient, error) {
 	h := &K8sClient{kubeClient: client}
 	return h, nil
 }
-
-func NewK8sClientWithContext(contextFile string) (*K8sClient, error) {
+// create kubernetes instance using a kubernetes context
+func NewK8sClientWithContext(pathToContextFile string) (*K8sClient, error) {
 	//generate kubeconfig file name
-	kubeCfgFile := "/tmp/admin123-kubeconfig"
-
-	//copy contextFile to kubeCfgFile
-	cfg,err := clientcmd.BuildConfigFromFlags("kubeconfig", kubeCfgFile)
+	cfg, err := clientcmd.BuildConfigFromFlags("kubeconfig", pathToContextFile)
 	//cfg, err := config.GetConfigWithContext(kubeCfgFile)
 	if err != nil {
 		return nil, err
@@ -52,17 +53,23 @@ func NewK8sClientWithContext(contextFile string) (*K8sClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := &K8sClient{kubeClient: client, kubeCfgFile: kubeCfgFile}
+	h := &K8sClient{kubeClient: client, kubeCfgFile: pathToContextFile}
 	return h, nil
 }
-
-func NewK8sClientWithCredentials(login, password, pathToCfgFile string) (*K8sClient, error) {
-	//generate kubeconfig file name
-
-	//LoginIntoClusterWithCredentials(login,password, "https://api.crc.testing:6443")
-	//execute: KUBECONFIG=/tmp/admin123-kubeconfig oc login -u $login -p $password --insecure-skip-tls-verify=true https://api.crc.testing:6443
-
-	cfg, err := config.GetConfigWithContext(pathToCfgFile)
+// generate kubernetes config file using a user cluster credentials and create kubernetes instance
+// with kube context under the user
+func NewK8sClientWithCredentials(login, password, pathToCfgFile, clusterConsoleUrl string) (*K8sClient, error) {
+	cmd := exec.Command("bash",
+		"-c", fmt.Sprintf(
+			"KUBECONFIG=%s"+
+		" oc login -u %s -p %s --insecure-skip-tls-verify=true %s",
+		pathToCfgFile, login, password, clusterConsoleUrl))
+	outBytes, err := cmd.CombinedOutput()
+	output := string(outBytes)
+	if err != nil {
+		log.Fatal(fmt.Printf("Cannot login into the cluster with oc client %s %s", err, output))
+	}
+	cfg, err := clientcmd.BuildConfigFromFlags("kubeconfig", pathToCfgFile)
 	if err != nil {
 		return nil, err
 	}

@@ -13,21 +13,12 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
-
-	"github.com/devfile/devworkspace-operator/test/e2e/pkg/client"
 
 	"path/filepath"
 	"testing"
 
-	workspaceWebhook "github.com/devfile/devworkspace-operator/webhook/workspace"
-
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/config"
-	"github.com/devfile/devworkspace-operator/test/e2e/pkg/deploy"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	_ "github.com/devfile/devworkspace-operator/test/e2e/pkg/tests"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
@@ -44,39 +35,10 @@ const (
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	fmt.Println("Starting to setup objects before run ginkgo suite")
 	config.Namespace = "devworkspace-controller"
-
-	k8sClient, err := client.NewK8sClient()
-	if err != nil {
-		fmt.Println("Failed to create workspace client")
-		panic(err)
-	}
-
-	controller := deploy.NewDeployment(k8sClient)
-	err = controller.DeployWorkspacesController()
-
-	if err != nil {
-		fmt.Println("Cannot deploy DevWorkspace Operator using Makefile")
-		panic(err)
-	}
-
+	config.DevNameSpace = "user-namespace"
 	return nil
 }, func(data []byte) {})
 
-var _ = ginkgo.SynchronizedAfterSuite(func() {
-	k8sClient, err := client.NewK8sClient()
-
-	if err != nil {
-		_ = fmt.Errorf("Failed to uninstall workspace controller %s", err)
-	}
-
-	if err = k8sClient.Kube().AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(context.TODO(), workspaceWebhook.MutateWebhookCfgName, metav1.DeleteOptions{}); err != nil {
-		_ = fmt.Errorf("Failed to delete mutating webhook configuration %s", err)
-	}
-
-	if err = k8sClient.Kube().AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(context.TODO(), workspaceWebhook.ValidateWebhookCfgName, metav1.DeleteOptions{}); err != nil {
-		_ = fmt.Errorf("Failed to delete validating webhook configuration %s", err)
-	}
-}, func() {})
 
 func TestWorkspaceController(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)

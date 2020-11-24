@@ -23,7 +23,11 @@ import (
 )
 
 func (w *K8sClient) OcApplyWorkspace(filePath string) (err error) {
-	cmd := exec.Command("KUBECONFIG="+w.kubeCfgFile, "oc", "apply", "--namespace", config.Namespace, "-f", filePath)
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(
+		"KUBECONFIG=%s oc apply --namespace %s -f %s",
+		w.kubeCfgFile,
+		config.DevNameSpace,
+		filePath))
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
 	if strings.Contains(output, "failed calling webhook") {
@@ -34,13 +38,19 @@ func (w *K8sClient) OcApplyWorkspace(filePath string) (err error) {
 	if err != nil && !strings.Contains(output, "AlreadyExists") {
 		fmt.Println(err)
 	}
+
 	return err
 }
 
 //launch 'exec' oc command in the defined pod and container
-func (w *K8sClient) ExecCommandInPod(podName string, containerName string, commandArgs ...string) (commandResult string) {
-	ocExecCommand := append([]string{"oc", "exec", podName, "--namespace", "user-devvs", "-c", containerName}, commandArgs...)
-	cmd := exec.Command("KUBECONFIG="+w.kubeCfgFile, ocExecCommand...)
+func (w *K8sClient) ExecCommandInContainerAsRegularUser(podName string, commandInContainer string) (commandResult string) {
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(
+		"KUBECONFIG=%s oc exec %s -n %s -c dev %s",
+		w.kubeCfgFile,
+		podName,
+		config.DevNameSpace,
+		commandInContainer))
+
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
 	if (err != nil) && (!strings.Contains(output, "denied the request: The only workspace creator has exec access")) {
@@ -50,32 +60,31 @@ func (w *K8sClient) ExecCommandInPod(podName string, containerName string, comma
 }
 
 //launch 'exec' oc command in the defined pod and container
-func ExecCommandInPod(podName string, containerName string, commandArgs ...string) (commandResult string) {
-	commandsArg := append([]string{"exec", podName, "--namespace", "user-devvs", "-c", containerName}, commandArgs...)
-	cmd := exec.Command("oc", commandsArg...)
+func (w *K8sClient) ExecCommandInPodAsDefaultUser(podName, commandInContainer string) (commandResult string, err error) {
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(
+		"oc exec %s -n %s -c dev %s",
+		podName,
+		config.DevNameSpace,
+		commandInContainer))
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
-	if (err != nil) && (!strings.Contains(output, "denied the request: The only workspace creator has exec access")) {
-		log.Fatal(err, "Cannot execute command in the dedicated container:", output)
+	if err != nil && strings.Contains(output, "The only workspace creator has exec access") {
+		return output, nil
+	} else {
+		log.Fatal("Cannot execute command in the dedicated container under default user:")
+		return output, err
 	}
-	return output
-}
 
-// login into a cluster using oc client ant return output of executed command
-func LoginIntoClusterWithCredentials(loginName string, loginPass string, clusterConsoleUrl string) string {
-	cmd := exec.Command("bash", "-c", "KUBECONFIG=/tmp/admin123-kubeconfig oc login -u developer -p developer --insecure-skip-tls-verify=true https://api.crc.testing:6443")
-
-	outBytes, err := cmd.CombinedOutput()
-	output := string(outBytes)
-	if err != nil {
-		log.Fatal("Cannot login into the cluster with oc client ", err, output)
-	}
-	return output
 }
 
 //create a project under login user using oc client
-func CreateProjectWithOcClient(projectName string, description string, displayName string) string {
-	cmd := exec.Command("oc", "new-project", projectName, "--description="+description, "--display-name="+displayName)
+func (w *K8sClient) CreateProjectWithKubernetesContext(projectName, description, displayName string) string {
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(
+		"KUBECONFIG=%s oc new-project %s --description=%s --display-name=%s",
+		w.kubeCfgFile,
+		projectName,
+		description,
+		displayName))
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
 	if err != nil {
@@ -83,25 +92,3 @@ func CreateProjectWithOcClient(projectName string, description string, displayNa
 	}
 	return output
 }
-
-// login into a cluster using oc client and return output of executed command
-func LoginIntoClusterWithToken(token string, clusterConsoleUrl string) string {
-	cmd := exec.Command("oc", "login", "--token", token, "--server=", clusterConsoleUrl)
-	outBytes, err := cmd.CombinedOutput()
-	output := string(outBytes)
-	if err != nil {
-		log.Fatal("Cannot login into the cluster with oc client", err)
-	}
-	return output
-}
-
-func ExecCommand(args ...string) string {
-	cmd := exec.Command("oc", args...)
-	outBytes, err := cmd.CombinedOutput()
-	output := string(outBytes)
-	if err != nil {
-		log.Fatal("Cannot perform oc command properly ", err, output)
-	}
-	return output
-}
-

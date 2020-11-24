@@ -15,6 +15,7 @@ package client
 import (
 	"context"
 	"errors"
+	"github.com/devfile/devworkspace-operator/test/e2e/pkg/config"
 	"os"
 	"time"
 
@@ -61,7 +62,7 @@ func GetDevWsStatus() (*v1alpha1.WorkspacePhase, error) {
 
 	namespacedName := types.NamespacedName{
 		Name:      "web-terminal",
-		Namespace: "devworkspace-controller",
+		Namespace: config.DevNameSpace,
 	}
 
 	workspace := &v1alpha1.DevWorkspace{}
@@ -84,8 +85,11 @@ func WaitDevWsStatus(expectedStatus v1alpha1.WorkspacePhase) (bool, error) {
 		case <-tick:
 			currentStatus, err := GetDevWsStatus()
 			logrus.Info("Now current status of developer workspace is: " + *currentStatus)
-			if err != nil {
+			if err != nil  {
 				return false, err
+			}
+			if *currentStatus == v1alpha1.WorkspaceStatusFailed{
+				return false, errors.New("workspace has been failed unexpectedly")
 			}
 			if *currentStatus == expectedStatus {
 				return true, nil

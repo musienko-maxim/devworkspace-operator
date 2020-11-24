@@ -15,7 +15,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/apex/log"
@@ -99,22 +98,18 @@ func (w *K8sClient) isPodRunning(podName, namespace string) wait.ConditionFunc {
 		return false, nil
 	}
 }
-func (w *K8sClient) FindPodInNamespaceByNamePrefix(namePrefix string) string {
-	var podName string
+// return the pod name from the dev user namespace (config.DevNameSpace)
+func (w *K8sClient) GetPodNameFromUserNameSpaceByLabel(selector string)  string {
+	podList, err := w.ListPods(config.DevNameSpace, selector)
 
-	podList, err := w.Kube().CoreV1().Pods("user-devvs").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		log.Error(err.Error())
+		log.Fatal("Cannot obtain pods from developer namespace " + err.Error())
 	}
-	for _, item := range podList.Items {
-		if strings.HasPrefix(item.Name, namePrefix) {
-			podName = item.Name
-		}
+	if len(podList.Items) == 0 {
+		log.Fatal("Cannot find pods in developer namespace with selector " + selector)
+
 	}
-	if podName != "" {
-		return podName
-	} else {
-		log.Fatal("Cannot find the Pod in dedicated namespace")
-		return podName
-	}
+	// we expect just 1 pod in test namespace and return the first value from the list
+	return podList.Items[0].Name;
 }
+

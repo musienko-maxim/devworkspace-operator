@@ -20,6 +20,3 @@ type Deployment struct {
 	kubeClient *client.K8sClient
 }
 
-func NewDeployment(kubeClient *client.K8sClient) *Deployment {
-	return &Deployment{kubeClient: kubeClient}
-}

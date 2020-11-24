@@ -13,3 +13,4 @@
 package config
 
 var Namespace string
+var DevNameSpace string
