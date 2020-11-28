@@ -19,13 +19,17 @@ import (
 	"github.com/devfile/devworkspace-operator/test/e2e/pkg/config"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"os"
 )
 
 var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
+	config.DevLogin=os.Getenv("TERMINAL_USER_LOGIN")
+	config.DevPassword=os.Getenv("TERMINAL_USER_PASSWORD")
+	config.ClusterEndPoit=os.Getenv("KUBERNETES_API_ENDPOINT")
 	var podName string
 	devCubeConfig := "/tmp/devconfig"
 	k8sClient, err := client.NewK8sClient()
-	devK8sClient, err := client.NewK8sClientWithCredentials("developer", "developer", devCubeConfig, "https://api.crc.testing:6443")
+	devK8sClient, err := client.NewK8sClientWithCredentials(config.DevLogin, config.DevPassword, devCubeConfig, config.ClusterEndPoit)
 
 	ginkgo.It("Wait devworkspace controller Pod", func() {
 		controllerLabel := "app.kubernetes.io/name=devworkspace-controller"

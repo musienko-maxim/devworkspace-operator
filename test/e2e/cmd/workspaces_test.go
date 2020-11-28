@@ -14,7 +14,6 @@ package cmd
 
 import (
 	"fmt"
-
 	"path/filepath"
 	"testing"
 

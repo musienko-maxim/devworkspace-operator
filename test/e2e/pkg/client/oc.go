@@ -30,6 +30,7 @@ func (w *K8sClient) OcApplyWorkspace(filePath string) (err error) {
 		filePath))
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
+
 	if strings.Contains(output, "failed calling webhook") {
 		fmt.Println("Seems DevWorkspace Webhook Server is not ready yet. Will retry in 2 seconds. Cause: " + output)
 		time.Sleep(2 * time.Second)

@@ -14,3 +14,6 @@ package config
 
 var Namespace string
 var DevNameSpace string
+var DevLogin string
+var DevPassword string
+var ClusterEndPoit string
