@@ -59,7 +59,6 @@ func NewK8sClientWithContext(pathToContextFile string) (*K8sClient, error) {
 // generate kubernetes config file using a user cluster credentials and create kubernetes instance
 // with kube context under the user
 func NewK8sClientWithCredentials(login, password, pathToCfgFile, clusterConsoleUrl string) (*K8sClient, error) {
-	fmt.Println("******************clusterConsoleUrl********************"+clusterConsoleUrl)
 	cmd := exec.Command("bash",
 		"-c", fmt.Sprintf(
 			"KUBECONFIG=%s"+

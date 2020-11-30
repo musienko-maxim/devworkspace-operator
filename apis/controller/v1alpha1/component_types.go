@@ -13,7 +13,7 @@
 package v1alpha1
 
 import (
-	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
+	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,6 +26,8 @@ type WorkspaceComponentSpec struct {
 	Components []devworkspace.Component `json:"components"`
 	// Commands from devfile, to be matched to components
 	Commands []devworkspace.Command `json:"commands,omitempty"`
+	// Events
+	Events *devworkspace.Events `json:"events,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component

@@ -20,6 +20,7 @@ import (
 	"github.com/devfile/devworkspace-operator/internal/cluster"
 	webhook_k8s "github.com/devfile/devworkspace-operator/pkg/webhook/kubernetes"
 	webhook_openshift "github.com/devfile/devworkspace-operator/pkg/webhook/openshift"
+	"github.com/devfile/devworkspace-operator/webhook/server"
 
 	"github.com/devfile/devworkspace-operator/pkg/config"
 
@@ -59,26 +60,32 @@ func SetupWebhooks(ctx context.Context, cfg *rest.Config) error {
 		return err
 	}
 
+	var secretName string
 	if config.ControllerCfg.IsOpenShift() {
+		secretName = server.WebhookServerTLSSecretName
 		// Set up the certs for OpenShift
 		log.Info("Setting up the OpenShift webhook server secure service")
-		err := webhook_openshift.SetupSecureService(client, ctx, namespace)
+		log.Info("Injecting serving cert using the Service CA operator")
+		err := webhook_openshift.SetupSecureService(client, ctx, secretName, namespace)
 		if err != nil {
 			return err
 		}
 	} else {
-		// Set up the certs for kubernetes
+		secretName, err = config.GetWebhooksSecretName()
+		if err != nil {
+			return fmt.Errorf("could not deploy webhooks server: %w", err)
+		}
 		log.Info("Setting up the Kubernetes webhook server secure service")
-		err := webhook_k8s.SetupSecureService(client, ctx, namespace)
+		log.Info(fmt.Sprintf("Using certificate stored in secret '%s' to serve webhooks", secretName))
+		err = webhook_k8s.SetupSecureService(client, ctx, secretName, namespace)
 		if err != nil {
 			return err
 		}
-		log.Info("Warning: the webhook server cert in use is not suitable for production. If you want to use this in production please set up certs with a certificate manager")
 	}
 
 	// Set up the deployment
 	log.Info("Creating the webhook server deployment")
-	err = CreateWebhookServerDeployment(client, ctx, namespace)
+	err = CreateWebhookServerDeployment(client, ctx, secretName, namespace)
 	if err != nil {
 		return err
 	}

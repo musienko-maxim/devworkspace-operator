@@ -13,6 +13,10 @@ SHELL := bash
 .SHELLFLAGS = -ec
 .ONESHELL:
 
+ifndef VERBOSE
+MAKEFLAGS += --silent
+endif
+
 export NAMESPACE ?= devworkspace-controller
 export IMG ?= quay.io/devfile/devworkspace-controller:next
 export ROUTING_SUFFIX ?= 192.168.99.100.nip.io
@@ -20,7 +24,7 @@ export PULL_POLICY ?= Always
 export WEBHOOK_ENABLED ?= true
 export DEFAULT_ROUTING ?= basic
 REGISTRY_ENABLED ?= true
-DEVWORKSPACE_API_VERSION ?= v1alpha1
+DEVWORKSPACE_API_VERSION ?= aeda60d4361911da85103f224644bfa792498499
 
 #internal params
 INTERNAL_TMP_DIR=/tmp/devworkspace-controller
@@ -64,7 +68,7 @@ endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
+CRD_OPTIONS ?= "crd:crdVersions=v1,trivialVersions=true"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -89,9 +93,12 @@ _print_vars:
 _create_namespace:
 	$(K8S_CLI) create namespace $(NAMESPACE) || true
 
-_generate_related_images_env:
-	@mkdir -p $(INTERNAL_TMP_DIR)
+_gen_configuration_env:
+	mkdir -p $(INTERNAL_TMP_DIR)
 	echo "export RELATED_IMAGE_devworkspace_webhook_server=$(IMG)" > $(RELATED_IMAGES_FILE)
+ifeq ($(PLATFORM),kubernetes)
+	echo "export WEBHOOK_SECRET_NAME=devworkspace-operator-webhook-cert" >> $(RELATED_IMAGES_FILE)
+endif
 	cat ./config/components/manager/manager.yaml \
 		| yq -r \
 			'.spec.template.spec.containers[]?.env[] | select(.name | startswith("RELATED_IMAGE")) | "export \(.name)=\"$${\(.name):-\(.value)}\""' \
@@ -131,7 +138,7 @@ manager: generate fmt vet
 
 # it's easier to bump whole kubeconfig instead of grabbing cluster URL from the current context
 _bump_kubeconfig:
-	@mkdir -p $(INTERNAL_TMP_DIR)
+	mkdir -p $(INTERNAL_TMP_DIR)
 ifndef KUBECONFIG
 	$(eval CONFIG_FILE = ${HOME}/.kube/config)
 else
@@ -140,12 +147,12 @@ endif
 	cp $(CONFIG_FILE) $(BUMPED_KUBECONFIG)
 
 _login_with_devworkspace_sa:
-	@$(eval SA_TOKEN := $(shell $(K8S_CLI) get secrets -o=json -n $(NAMESPACE) | jq -r '[.items[] | select (.type == "kubernetes.io/service-account-token" and .metadata.annotations."kubernetes.io/service-account.name" == "default")][0].data.token' | base64 --decode ))
-	@echo "Logging as controller's SA in $(NAMESPACE)"
+	$(eval SA_TOKEN := $(shell $(K8S_CLI) get secrets -o=json -n $(NAMESPACE) | jq -r '[.items[] | select (.type == "kubernetes.io/service-account-token" and .metadata.annotations."kubernetes.io/service-account.name" == "default")][0].data.token' | base64 --decode ))
+	echo "Logging as controller's SA in $(NAMESPACE)"
 	oc login --token=$(SA_TOKEN) --kubeconfig=$(BUMPED_KUBECONFIG)
 
 ### run: Run against the configured Kubernetes cluster in ~/.kube/config
-run: _print_vars _generate_related_images_env _bump_kubeconfig _login_with_devworkspace_sa
+run: _print_vars _gen_configuration_env _bump_kubeconfig _login_with_devworkspace_sa
 	source $(RELATED_IMAGES_FILE)
 	export KUBECONFIG=$(BUMPED_KUBECONFIG)
 	CONTROLLER_SERVICE_ACCOUNT_NAME=default \
@@ -153,7 +160,7 @@ run: _print_vars _generate_related_images_env _bump_kubeconfig _login_with_devwo
 		go run ./main.go
 
 
-debug: _print_vars _generate_related_images_env _bump_kubeconfig _login_with_devworkspace_sa
+debug: _print_vars _gen_configuration_env _bump_kubeconfig _login_with_devworkspace_sa
 	source $(RELATED_IMAGES_FILE)
 	export KUBECONFIG=$(BUMPED_KUBECONFIG)
 	CONTROLLER_SERVICE_ACCOUNT_NAME=default \
@@ -166,22 +173,33 @@ install_crds: _kustomize _init_devworkspace_crds
 
 ### install: Install controller in the configured Kubernetes cluster in ~/.kube/config
 install: _print_vars _kustomize _init_devworkspace_crds _create_namespace deploy_registry
-	mv config/devel/kustomization.yaml config/devel/kustomization.yaml.bak
-	mv config/devel/config.properties config/devel/config.properties.bak
-	mv config/devel/manager_image_patch.yaml config/devel/manager_image_patch.yaml.bak
+	mv config/cert-manager/kustomization.yaml config/cert-manager/kustomization.yaml.bak
+	mv config/service-ca/kustomization.yaml config/service-ca/kustomization.yaml.bak
+	mv config/base/config.properties config/base/config.properties.bak
+	mv config/base/manager_image_patch.yaml config/base/manager_image_patch.yaml.bak
 
-	envsubst < config/devel/kustomization.yaml.bak > config/devel/kustomization.yaml
-	envsubst < config/devel/config.properties.bak > config/devel/config.properties
-	envsubst < config/devel/manager_image_patch.yaml.bak > config/devel/manager_image_patch.yaml
-	$(KUSTOMIZE) build config/devel | $(K8S_CLI) apply -f - || true
+	envsubst < config/cert-manager/kustomization.yaml.bak > config/cert-manager/kustomization.yaml
+	envsubst < config/service-ca/kustomization.yaml.bak > config/service-ca/kustomization.yaml
+	envsubst < config/base/config.properties.bak > config/base/config.properties
+	envsubst < config/base/manager_image_patch.yaml.bak > config/base/manager_image_patch.yaml
+ifeq ($(PLATFORM),kubernetes)
+	$(KUSTOMIZE) build config/cert-manager | $(K8S_CLI) apply -f - || true
+else
+	$(KUSTOMIZE) build config/service-ca | $(K8S_CLI) apply -f - || true
+endif
 
-	mv config/devel/kustomization.yaml.bak config/devel/kustomization.yaml
-	mv config/devel/config.properties.bak config/devel/config.properties
-	mv config/devel/manager_image_patch.yaml.bak config/devel/manager_image_patch.yaml
+	mv config/cert-manager/kustomization.yaml.bak config/cert-manager/kustomization.yaml
+	mv config/service-ca/kustomization.yaml.bak config/service-ca/kustomization.yaml
+	mv config/base/config.properties.bak config/base/config.properties
+	mv config/base/manager_image_patch.yaml.bak config/base/manager_image_patch.yaml
 
 ### restart: Restart devworkspace-controller deployment
 restart:
 	$(K8S_CLI) rollout restart -n $(NAMESPACE) deployment/devworkspace-controller-manager
+
+### restart_webhook: Restart devworkspace-controller webhook deployment
+restart_webhook:
+	$(K8S_CLI) rollout restart -n $(NAMESPACE) deployment/devworkspace-webhook-server
 
 ### uninstall: Remove controller resources from the cluster
 uninstall: _kustomize
@@ -191,7 +209,11 @@ uninstall: _kustomize
 	$(K8S_CLI) delete devworkspacetemplates.workspace.devfile.io --all-namespaces --all | true
 # Have to wait for routings to be deleted in case there are finalizers
 	$(K8S_CLI) delete workspaceroutings.controller.devfile.io --all-namespaces --all --wait | true
-	kustomize build config/devel | $(K8S_CLI) delete --ignore-not-found -f -
+ifeq ($(PLATFORM),kubernetes)
+	$(KUSTOMIZE) build config/cert-manager | $(K8S_CLI) delete --ignore-not-found -f -
+else
+	$(KUSTOMIZE) build config/service-ca | $(K8S_CLI) delete --ignore-not-found -f -
+endif
 	$(K8S_CLI) delete all -l "app.kubernetes.io/part-of=devworkspace-operator" --all-namespaces
 	$(K8S_CLI) delete mutatingwebhookconfigurations.admissionregistration.k8s.io controller.devfile.io --ignore-not-found
 	$(K8S_CLI) delete validatingwebhookconfigurations.admissionregistration.k8s.io controller.devfile.io --ignore-not-found
@@ -227,7 +249,7 @@ endif
 fmt_license:
 ifneq ($(shell command -v addlicense 2> /dev/null),)
 	@echo 'addlicense -v -f license_header.txt **/*.go'
-	@addlicense -v -f license_header.txt $$(find . -name '*.go')
+	addlicense -v -f license_header.txt $$(find . -name '*.go')
 else
 	$(error addlicense must be installed for this rule: go get -u github.com/google/addlicense)
 endif
@@ -268,6 +290,10 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
+### install_cert_manager: install Cert Mananger v1.0.4 on the cluster
+install_cert_manager:
+	kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.4/cert-manager.yaml
+
 _kustomize:
 ifeq (, $(shell which kustomize))
 	@{ \
@@ -288,19 +314,6 @@ ifneq ($(shell operator-sdk version | cut -d , -f 1 | cut -d : -f 2 | cut -d \" 
 	@echo 'WARN: operator-sdk $(OPERATOR_SDK_VERSION) is expected to be used for this target but $(shell operator-sdk version | cut -d , -f 1 | cut -d : -f 2 | cut -d \" -f 2) found.'
 	@echo 'WARN: Please use the recommended operator-sdk if you face any issue.'
 endif
-
-# Generate bundle manifests and metadata, then validate generated files.
-.PHONY: bundle
-bundle: manifests _operator_sdk
-	operator-sdk generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	operator-sdk bundle validate ./bundle
-
-# Build the bundle image.
-.PHONY: bundle-build
-bundle-build:
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: help
 ### help: print this message

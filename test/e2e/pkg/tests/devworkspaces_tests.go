@@ -23,13 +23,13 @@ import (
 )
 
 var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
-	config.DevLogin=os.Getenv("TERMINAL_USER_LOGIN")
-	config.DevPassword=os.Getenv("TERMINAL_USER_PASSWORD")
-	config.ClusterEndPoit=os.Getenv("KUBERNETES_API_ENDPOINT")
+	config.DevLogin = os.Getenv("TERMINAL_USER_LOGIN")
+	config.DevPassword = os.Getenv("TERMINAL_USER_PASSWORD")
+	config.ClusterEndPoint = os.Getenv("KUBERNETES_API_ENDPOINT")
 	var podName string
 	devCubeConfig := "/tmp/devconfig"
 	k8sClient, err := client.NewK8sClient()
-	devK8sClient, err := client.NewK8sClientWithCredentials(config.DevLogin, config.DevPassword, devCubeConfig, config.ClusterEndPoit)
+	devK8sClient, err := client.NewK8sClientWithCredentials(config.DevLogin, config.DevPassword, devCubeConfig, config.ClusterEndPoint)
 
 	ginkgo.It("Wait devworkspace controller Pod", func() {
 		controllerLabel := "app.kubernetes.io/name=devworkspace-controller"
@@ -67,9 +67,13 @@ var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
 	})
 
 	ginkgo.It("Add OpenShift web terminal to cluster and wait running status", func() {
-
-		devK8sClient.CreateProjectWithKubernetesContext(config.DevNameSpace, "max", config.DevNameSpace)
-
+		//TODO need to replace on native method. On tis moment have problem like:  dial tcp: lookup kubeconfig on 127.0.1.1:53: no such host.
+		//Need to figure out
+		err, output :=devK8sClient.CreateProjectWithKubernetesContext(config.DevNameSpace, "max", config.DevNameSpace)
+		if err != nil {
+			ginkgo.Fail(fmt.Sprintf("Failed to create dev namespace using oc client : %s %s",  err.Error(),output))
+			return
+		}
 		err = devK8sClient.OcApplyWorkspace("samples/web-terminal.yaml")
 
 		if err != nil {
@@ -89,14 +93,12 @@ var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
 		podSelector := "controller.devfile.io/workspace_name=web-terminal"
 		podName = k8sClient.GetPodNameFromUserNameSpaceByLabel(podSelector)
 		resultOfExecCommand := devK8sClient.ExecCommandInContainerAsRegularUser(podName, "echo hello dev")
-
 		gomega.Expect(resultOfExecCommand).To(gomega.ContainSubstring("hello dev"))
 	})
 
 	ginkgo.It("Check that not pod owner cannot execute a command in the container", func() {
 		expectedMessageSuffix := "denied the request: The only workspace creator has exec access"
-		resultOfExecCommand,_ := k8sClient.ExecCommandInPodAsDefaultUser(podName, "echo hello dev")
-
+		resultOfExecCommand, _ := k8sClient.ExecCommandInPodAsDefaultUser(podName, "echo hello dev")
 		gomega.Expect(resultOfExecCommand).To(gomega.ContainSubstring(expectedMessageSuffix))
 	})
 

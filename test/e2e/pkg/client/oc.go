@@ -72,14 +72,13 @@ func (w *K8sClient) ExecCommandInPodAsDefaultUser(podName, commandInContainer st
 	if err != nil && strings.Contains(output, "The only workspace creator has exec access") {
 		return output, nil
 	} else {
-		log.Fatal("Cannot execute command in the dedicated container under default user:")
 		return output, err
 	}
 
 }
 
 //create a project under login user using oc client
-func (w *K8sClient) CreateProjectWithKubernetesContext(projectName, description, displayName string) string {
+func (w *K8sClient) CreateProjectWithKubernetesContext(projectName, description, displayName string) (error, string)  {
 	cmd := exec.Command("bash", "-c", fmt.Sprintf(
 		"KUBECONFIG=%s oc new-project %s --description=%s --display-name=%s",
 		w.kubeCfgFile,
@@ -89,7 +88,8 @@ func (w *K8sClient) CreateProjectWithKubernetesContext(projectName, description,
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
 	if err != nil {
-		log.Fatalf("Cannot create the project %s using oc client %s, %s", projectName, err, output)
+		return err, output
+		//log.Fatalf("Cannot create the project %s using oc client %s, %s", projectName, err, output)
 	}
-	return output
+	return err, output
 }

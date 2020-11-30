@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"net/url"
 
-	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
+	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha2"
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
 	"github.com/devfile/devworkspace-operator/pkg/config"
 )
@@ -30,7 +30,12 @@ func getExposedEndpoints(
 
 	for machineName, machineEndpoints := range endpoints {
 		for _, endpoint := range machineEndpoints {
-			if endpoint.Attributes[string(controllerv1alpha1.PUBLIC_ENDPOINT_ATTRIBUTE)] != "true" {
+			endpointAttributes := map[string]string{}
+			err := endpoint.Attributes.Into(&endpointAttributes)
+			if err != nil {
+				return nil, false, err
+			}
+			if endpoint.Exposure != devworkspace.PublicEndpointExposure {
 				continue
 			}
 			endpointUrl, err := resolveURLForEndpoint(endpoint, routingObj)
@@ -43,7 +48,7 @@ func getExposedEndpoints(
 			exposedEndpoints[machineName] = append(exposedEndpoints[machineName], controllerv1alpha1.ExposedEndpoint{
 				Name:       endpoint.Name,
 				Url:        endpointUrl,
-				Attributes: endpoint.Attributes,
+				Attributes: endpointAttributes,
 			})
 		}
 	}
@@ -71,13 +76,13 @@ func resolveURLForEndpoint(
 }
 
 func getURLForEndpoint(endpoint devworkspace.Endpoint, host string, secure bool) string {
-	protocol := endpoint.Attributes[string(controllerv1alpha1.PROTOCOL_ENDPOINT_ATTRIBUTE)]
-	if secure && endpoint.Attributes[string(controllerv1alpha1.SECURE_ENDPOINT_ATTRIBUTE)] == "true" {
-		protocol = getSecureProtocol(protocol)
+	protocol := endpoint.Protocol
+	if secure && endpoint.Secure {
+		protocol = devworkspace.EndpointProtocol(getSecureProtocol(string(protocol)))
 	}
-	path := endpoint.Attributes[string(controllerv1alpha1.PATH_ENDPOINT_ATTRIBUTE)]
+	path := endpoint.Path
 	u := url.URL{
-		Scheme: protocol,
+		Scheme: string(protocol),
 		Host:   host,
 		Path:   path,
 	}

@@ -17,7 +17,7 @@ import (
 
 	"github.com/devfile/devworkspace-operator/pkg/common"
 
-	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
+	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha2"
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
 	"github.com/devfile/devworkspace-operator/pkg/config"
 	corev1 "k8s.io/api/core/v1"
@@ -74,17 +74,22 @@ func (s *ClusterSolver) GetExposedEndpoints(
 
 	for machineName, machineEndpoints := range endpoints {
 		for _, endpoint := range machineEndpoints {
-			if endpoint.Attributes[string(controllerv1alpha1.PUBLIC_ENDPOINT_ATTRIBUTE)] != "true" {
+			if endpoint.Exposure != devworkspace.PublicEndpointExposure {
 				continue
 			}
 			url, err := resolveServiceHostnameForEndpoint(endpoint, routingObj.Services)
 			if err != nil {
 				return nil, false, err
 			}
+
+			endpointAttributes := endpoint.Attributes.Strings(&err)
+			if err != nil {
+				return nil, false, err
+			}
 			exposedEndpoints[machineName] = append(exposedEndpoints[machineName], controllerv1alpha1.ExposedEndpoint{
 				Name:       endpoint.Name,
 				Url:        url,
-				Attributes: endpoint.Attributes,
+				Attributes: endpointAttributes,
 			})
 		}
 	}

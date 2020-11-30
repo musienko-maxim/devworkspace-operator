@@ -15,7 +15,7 @@ package solvers
 import (
 	"fmt"
 
-	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
+	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha2"
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
 	"github.com/devfile/devworkspace-operator/pkg/common"
 	"github.com/devfile/devworkspace-operator/pkg/config"
@@ -103,8 +103,8 @@ func (s *OpenShiftOAuthSolver) getProxyRoutes(
 			proxyEndpoint := portMappings[upstreamEndpoint.Name]
 			endpoint := proxyEndpoint.publicEndpoint
 			var tls *routeV1.TLSConfig = nil
-			if endpoint.Attributes[string(controllerv1alpha1.SECURE_ENDPOINT_ATTRIBUTE)] == "true" {
-				if endpoint.Attributes[string(controllerv1alpha1.TYPE_ENDPOINT_ATTRIBUTE)] == "terminal" {
+			if endpoint.Secure {
+				if endpoint.Attributes.GetString(string(controllerv1alpha1.TYPE_ENDPOINT_ATTRIBUTE), nil) == "terminal" {
 					tls = &routeV1.TLSConfig{
 						Termination:                   routeV1.TLSTerminationEdge,
 						InsecureEdgeTerminationPolicy: routeV1.InsecureEdgeTerminationPolicyRedirect,
@@ -159,6 +159,8 @@ func getProxyEndpointMappings(
 					Attributes: endpoint.Attributes,
 					Name:       fmt.Sprintf("%s-proxy", endpoint.Name),
 					TargetPort: proxyHttpsPort,
+					Secure:     endpoint.Secure,
+					Exposure:   endpoint.Exposure,
 				},
 				publicEndpointHttpPort: proxyHttpPort,
 			}
@@ -171,9 +173,8 @@ func getProxyEndpointMappings(
 }
 
 func endpointNeedsProxy(endpoint devworkspace.Endpoint) bool {
-	publicAttr, exists := endpoint.Attributes[string(controllerv1alpha1.PUBLIC_ENDPOINT_ATTRIBUTE)]
-	endpointIsPublic := !exists || (publicAttr == "true")
+	endpointIsPublic := endpoint.Exposure == "" || endpoint.Exposure == devworkspace.PublicEndpointExposure
 	return endpointIsPublic &&
-		endpoint.Attributes[string(controllerv1alpha1.SECURE_ENDPOINT_ATTRIBUTE)] == "true" &&
-		endpoint.Attributes[string(controllerv1alpha1.TYPE_ENDPOINT_ATTRIBUTE)] != "terminal"
+		endpoint.Secure &&
+		endpoint.Attributes.Get(string(controllerv1alpha1.TYPE_ENDPOINT_ATTRIBUTE), nil) != "terminal"
 }

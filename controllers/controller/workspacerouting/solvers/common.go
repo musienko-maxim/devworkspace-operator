@@ -13,7 +13,7 @@
 package solvers
 
 import (
-	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
+	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha2"
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
 	"github.com/devfile/devworkspace-operator/pkg/common"
 	"github.com/devfile/devworkspace-operator/pkg/config"
@@ -35,7 +35,7 @@ func getDiscoverableServicesForEndpoints(endpoints map[string]controllerv1alpha1
 	var services []corev1.Service
 	for _, machineEndpoints := range endpoints {
 		for _, endpoint := range machineEndpoints {
-			if endpoint.Attributes[string(controllerv1alpha1.DISCOVERABLE_ATTRIBUTE)] == "true" {
+			if endpoint.Attributes.GetBoolean(string(controllerv1alpha1.DISCOVERABLE_ATTRIBUTE), nil) {
 				// Create service with name matching endpoint
 				// TODO: This could cause a reconcile conflict if multiple workspaces define the same discoverable endpoint
 				// Also endpoint names may not be valid as service names
@@ -118,7 +118,7 @@ func getRoutingForSpec(endpoints map[string]controllerv1alpha1.EndpointList, met
 	var routes []routeV1.Route
 	for _, machineEndpoints := range endpoints {
 		for _, endpoint := range machineEndpoints {
-			if endpoint.Attributes[string(controllerv1alpha1.PUBLIC_ENDPOINT_ATTRIBUTE)] != "true" {
+			if endpoint.Exposure != devworkspace.PublicEndpointExposure {
 				continue
 			}
 			if config.ControllerCfg.IsOpenShift() {

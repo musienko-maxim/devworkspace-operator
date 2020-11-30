@@ -31,8 +31,8 @@ export CI="openshift"
 export ARTIFACTS_DIR="/tmp/artifacts"
 export NAMESPACE="devworkspace-controller"
 export TERMINAL_USER_SECRET_NAME="terminal-user"
-export TERMINAL_USER_LOGIN="developer"
-export TERMINAL_USER_PASSWORD="developer"
+export TERMINAL_USER_LOGIN="terminal-test"
+export TERMINAL_USER_PASSWORD="terminal"
 export PATH_TO_HTPASSWD_FILE='/tmp/users.htpasswd'
 export PATH_TO_OAUTH_CR_YAML_FILE='/tmp/htpasswdProvider.yaml'
 export KUBERNETES_API_ENDPOINT=$(oc whoami --show-server)
@@ -66,7 +66,7 @@ function getDevWorkspaceOperatorLogs() {
 }
 
 function generateHtpasswd() {
-   htpasswd -c -B -b ${PATH_TO_HTPASSWD_FILE} terminal-test terminal
+   htpasswd -c -B -b ${PATH_TO_HTPASSWD_FILE} ${TERMINAL_USER_LOGIN} ${TERMINAL_USER_PASSWORD}
 }
 function generateHtpasswdProviderYaml() {
     echo  "apiVersion: config.openshift.io/v1
@@ -90,9 +90,8 @@ function addUserToCluster (){
     --dry-run=client \
     --output yaml | oc apply -f -
   #need timeout for applying changes into cluster properly
-  sleep 4
+  sleep 5
   oc apply -f ${PATH_TO_OAUTH_CR_YAML_FILE}
-  oc adm policy add-cluster-role-to-user admin ${TERMINAL_USER_LOGIN}
 }
 
 function checkLogin (){
@@ -126,8 +125,8 @@ fi
 # For some reason go on PROW force usage vendor folder
 # This workaround is here until we don't figure out cause
 generateHtpasswd
-#generateHtpasswdProviderYaml
-#addUserToCluster
+generateHtpasswdProviderYaml
+addUserToCluster
 checkLogin
 go mod tidy
 go mod vendor
