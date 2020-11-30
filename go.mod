@@ -13,7 +13,6 @@ require (
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
 	github.com/openshift/api v0.0.0-20200205133042-34f0ec8dab87
-	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.6.1
 	go.uber.org/zap v1.16.0 // indirect
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
