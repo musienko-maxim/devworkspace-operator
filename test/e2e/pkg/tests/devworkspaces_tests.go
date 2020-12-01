@@ -27,7 +27,7 @@ var _ = ginkgo.Describe("[Create OpenShift Web Terminal Workspace]", func() {
 	config.DevPassword = os.Getenv("TERMINAL_USER_PASSWORD")
 	config.ClusterEndPoint = os.Getenv("KUBERNETES_API_ENDPOINT")
 	var podName string
-	devCubeConfig := "/tmp/devconfig"
+	devKubeconfig := "/tmp/devconfig"
 	k8sClient, err := client.NewK8sClient()
 	devK8sClient, err := client.NewK8sClientWithCredentials(config.DevLogin, config.DevPassword, devCubeConfig, config.ClusterEndPoint)
 
