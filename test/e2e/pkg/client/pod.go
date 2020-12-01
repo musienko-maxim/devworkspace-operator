@@ -33,7 +33,7 @@ func (w *K8sClient) WaitForPodRunningByLabel(label string) (deployed bool, err e
 		case <-timeout:
 			return false, err
 		case <-tick:
-			err := w.WaitForRunningPodBySelector(config.Namespace, label, time.Minute)
+			err = w.WaitForRunningPodBySelector(config.Namespace, label, time.Minute)
 			if err == nil {
 				return true, nil
 			}
@@ -112,4 +112,3 @@ func (w *K8sClient) GetPodNameFromUserNameSpaceByLabel(selector string)  string 
 	// we expect just 1 pod in test namespace and return the first value from the list
 	return podList.Items[0].Name;
 }
-
