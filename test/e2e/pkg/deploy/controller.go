@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (w *Deployment) CreateNamespace(nameSpaceName string) error {
+func (w *Deployment) CreateNamespace(namespaceName string) error {
 	_, err := w.kubeClient.Kube().CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: nameSpaceName,
@@ -31,5 +31,4 @@ func (w *Deployment) CreateNamespace(nameSpaceName string) error {
 	}
 	return err
 }
-
 
