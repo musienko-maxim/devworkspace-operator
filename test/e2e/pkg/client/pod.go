@@ -99,7 +99,7 @@ func (w *K8sClient) isPodRunning(podName, namespace string) wait.ConditionFunc {
 	}
 }
 // return the pod name from the dev user namespace (config.DevNameSpace)
-func (w *K8sClient) GetPodNameFromUserNameSpaceByLabel(selector string)  string {
+func (w *K8sClient) GetPodNameFromUserNamespaceByLabel(selector string)  string {
 	podList, err := w.ListPods(config.DevNameSpace, selector)
 
 	if err != nil {
