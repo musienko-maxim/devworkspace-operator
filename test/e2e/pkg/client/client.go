@@ -67,7 +67,7 @@ func NewK8sClientWithCredentials(login, password, pathToCfgFile, clusterConsoleU
 	outBytes, err := cmd.CombinedOutput()
 	output := string(outBytes)
 	if err != nil {
-		log.Fatal(fmt.Printf("Cannot login into the cluster with oc client %s %s", err, output))
+		log.Fatal(fmt.Sprintf("Cannot login into the cluster with oc client %s %s", err, output))
 	}
 	cfg, err := clientcmd.BuildConfigFromFlags("kubeconfig", pathToCfgFile)
 	if err != nil {
