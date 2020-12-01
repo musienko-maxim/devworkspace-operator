@@ -107,7 +107,6 @@ func (w *K8sClient) GetPodNameFromUserNamespaceByLabel(selector string)  string 
 	}
 	if len(podList.Items) == 0 {
 		log.Fatal("Cannot find pods in developer namespace with selector " + selector)
-
 	}
 	// we expect just 1 pod in test namespace and return the first value from the list
 	return podList.Items[0].Name;
