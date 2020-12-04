@@ -30,19 +30,12 @@ function Catch_Finish() {
 export CI="openshift"
 export ARTIFACTS_DIR="/tmp/artifacts"
 export NAMESPACE="devworkspace-controller"
-export TERMINAL_USER_SECRET_NAME="terminal-user"
-export TERMINAL_USER_LOGIN="terminal-test"
-export TERMINAL_USER_PASSWORD="terminal"
-export PATH_TO_HTPASSWD_FILE='/tmp/users.htpasswd'
-export PATH_TO_OAUTH_CR_YAML_FILE='/tmp/htpasswdProvider.yaml'
-export KUBERNETES_API_ENDPOINT=$(oc whoami --show-server)
 
 # Component is defined in Openshift CI job configuration. See: https://github.com/openshift/release/blob/master/ci-operator/config/devfile/devworkspace-operator/devfile-devworkspace-operator-master__v4.yaml#L8
 export CI_COMPONENT="devworkspace-operator"
 
 # DEVWORKSPACE_OPERATOR env var exposed by Openshift CI in e2e test pod. More info about how images are builded in Openshift CI: https://github.com/openshift/ci-tools/blob/master/TEMPLATES.md#parameters-available-to-templates
 # Dependencies environment are defined here: https://github.com/openshift/release/blob/master/ci-operator/config/devfile/devworkspace-operator/devfile-devworkspace-operator-master__v5.yaml#L36-L38
-
 export IMG=${DEVWORKSPACE_OPERATOR}
 
 # Pod created by openshift ci don't have user. Using this envs should avoid errors with git user.
@@ -65,71 +58,8 @@ function getDevWorkspaceOperatorLogs() {
     oc get events -n ${NAMESPACE}| tee get_events.log
 }
 
-function generateHtpasswd() {
-   htpasswd -c -B -b ${PATH_TO_HTPASSWD_FILE} ${TERMINAL_USER_LOGIN} ${TERMINAL_USER_PASSWORD}
-}
-function generateHtpasswdProviderYaml() {
-    echo  "apiVersion: config.openshift.io/v1
-kind: OAuth
-metadata:
-  name: cluster
-spec:
-  identityProviders:
-  - name: htpasswd
-    mappingMethod: claim
-    type: HTPasswd
-    htpasswd:
-      fileData:
-        name: ${TERMINAL_USER_SECRET_NAME}" > ${PATH_TO_OAUTH_CR_YAML_FILE}
-}
-
-function addUserToCluster (){
-  oc create secret generic ${TERMINAL_USER_SECRET_NAME} \
-    --from-file=htpasswd=${PATH_TO_HTPASSWD_FILE} \
-    --namespace openshift-config \
-    --dry-run=client \
-    --output yaml | oc apply -f -
-  #need timeout for applying changes into cluster properly
-  sleep 5
-  oc apply -f ${PATH_TO_OAUTH_CR_YAML_FILE}
-}
-
-function checkLogin (){
-  CURRENT_TIME=$(date +%s)
-  ENDTIME=$(($CURRENT_TIME + 300))
-  while [ $(date +%s) -lt $ENDTIME ]; do
-      if KUBECONFIG='/tmp/checkloginconfig' oc login\
-      -u ${TERMINAL_USER_LOGIN}\
-      -p ${TERMINAL_USER_PASSWORD} ${KUBERNETES_API_ENDPOINT}\
-      "--insecure-skip-tls-verify=true"; then
-          break
-      fi
-      sleep 10
-  done
-}
-
-
-# Check if operator-sdk is installed and if not install operator sdk in $GOPATH/bin dir
-if ! hash operator-sdk 2>/dev/null; then
-    mkdir -p $GOPATH/bin
-    export PATH="$PATH:$(pwd):$GOPATH/bin"
-    OPERATOR_SDK_VERSION=v0.17.0
-
-    curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu
-
-    chmod +x operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu && \
-        cp operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu $GOPATH/bin/operator-sdk && \
-        rm operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu
-fi
-
 # For some reason go on PROW force usage vendor folder
 # This workaround is here until we don't figure out cause
-generateHtpasswd
-generateHtpasswdProviderYaml
-addUserToCluster
-checkLogin
 go mod tidy
 go mod vendor
-make install
 make test_e2e
-make uninstall

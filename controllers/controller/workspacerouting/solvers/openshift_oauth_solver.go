@@ -15,6 +15,8 @@ package solvers
 import (
 	"fmt"
 
+	maputils "github.com/devfile/devworkspace-operator/internal/map"
+
 	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha2"
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
 	"github.com/devfile/devworkspace-operator/pkg/common"
@@ -102,26 +104,17 @@ func (s *OpenShiftOAuthSolver) getProxyRoutes(
 		for _, upstreamEndpoint := range machineEndpoints {
 			proxyEndpoint := portMappings[upstreamEndpoint.Name]
 			endpoint := proxyEndpoint.publicEndpoint
-			var tls *routeV1.TLSConfig = nil
-			if endpoint.Secure {
-				if endpoint.Attributes.GetString(string(controllerv1alpha1.TYPE_ENDPOINT_ATTRIBUTE), nil) == "terminal" {
-					tls = &routeV1.TLSConfig{
-						Termination:                   routeV1.TLSTerminationEdge,
-						InsecureEdgeTerminationPolicy: routeV1.InsecureEdgeTerminationPolicyRedirect,
-					}
-				} else {
-					tls = &routeV1.TLSConfig{
-						Termination:                   routeV1.TLSTerminationReencrypt,
-						InsecureEdgeTerminationPolicy: routeV1.InsecureEdgeTerminationPolicyRedirect,
-					}
-				}
-			}
 			route := getRouteForEndpoint(endpoint, workspaceMeta)
-			route.Spec.TLS = tls
-			if route.Annotations == nil {
-				route.Annotations = map[string]string{}
+			route.Spec.TLS = &routeV1.TLSConfig{
+				Termination:                   routeV1.TLSTerminationReencrypt,
+				InsecureEdgeTerminationPolicy: routeV1.InsecureEdgeTerminationPolicyRedirect,
 			}
-			route.Annotations[config.WorkspaceEndpointNameAnnotation] = upstreamEndpoint.Name
+			// Reverting single host feature since OpenShift OAuth uses absolute references
+			route.Spec.Host = common.EndpointHostname(workspaceMeta.WorkspaceId, endpoint.Name, endpoint.TargetPort, workspaceMeta.RoutingSuffix)
+			route.Spec.Path = "/"
+
+			//override the original endpointName
+			route.Annotations = maputils.Append(route.Annotations, config.WorkspaceEndpointNameAnnotation, upstreamEndpoint.Name)
 			routes = append(routes, route)
 		}
 	}
@@ -176,5 +169,7 @@ func endpointNeedsProxy(endpoint devworkspace.Endpoint) bool {
 	endpointIsPublic := endpoint.Exposure == "" || endpoint.Exposure == devworkspace.PublicEndpointExposure
 	return endpointIsPublic &&
 		endpoint.Secure &&
+		// Terminal is temporarily excluded from secure servers
+		// because Theia is not aware how to authenticate against OpenShift OAuth
 		endpoint.Attributes.Get(string(controllerv1alpha1.TYPE_ENDPOINT_ATTRIBUTE), nil) != "terminal"
 }

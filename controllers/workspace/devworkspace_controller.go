@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/apex/log"
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
 	"github.com/devfile/devworkspace-operator/internal/cluster"
 	"github.com/devfile/devworkspace-operator/pkg/common"
@@ -147,9 +146,9 @@ func (r *DevWorkspaceReconciler) Reconcile(req ctrl.Request) (reconcileResult ct
 		return reconcile.Result{Requeue: true}, err
 	}
 
-	immutable := workspace.Annotations[config.WorkspaceImmutableAnnotation]
-	if immutable == "true" && config.ControllerCfg.GetWebhooksEnabled() != "true" {
-		reqLogger.Info("Workspace is configured as immutable but webhooks are not enabled.")
+	restrictedAccess := workspace.Annotations[config.WorkspaceRestrictedAccessAnnotation]
+	if restrictedAccess == "true" && config.ControllerCfg.GetWebhooksEnabled() != "true" {
+		reqLogger.Info("Workspace is configured to have restricted access but webhooks are not enabled.")
 		reconcileStatus.Phase = devworkspace.WorkspaceStatusFailed
 		reconcileStatus.Conditions[devworkspace.WorkspaceFailedStart] = "Workspace has restricted-access annotation " +
 			"applied but operator does not have webhooks enabled. " +
@@ -164,8 +163,11 @@ func (r *DevWorkspaceReconciler) Reconcile(req ctrl.Request) (reconcileResult ct
 		if componentsStatus.FailStartup {
 			reqLogger.Info("DevWorkspace start failed")
 			reconcileStatus.Phase = devworkspace.WorkspaceStatusFailed
-			// TODO: Propagate more information from sync step to show a more useful message -- which plugin couldn't be installed?
-			reconcileStatus.Conditions[devworkspace.WorkspaceFailedStart] = "Could not find plugins for devworkspace"
+			if componentsStatus.Message != "" {
+				reconcileStatus.Conditions[devworkspace.WorkspaceFailedStart] = componentsStatus.Message
+			} else {
+				reconcileStatus.Conditions[devworkspace.WorkspaceFailedStart] = "Could not find plugins for devworkspace"
+			}
 		} else {
 			reqLogger.Info("Waiting on components to be ready")
 		}
@@ -326,7 +328,7 @@ func getWorkspaceId(instance *devworkspace.DevWorkspace) (string, error) {
 
 func (r *DevWorkspaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// TODO: Set up indexing https://book.kubebuilder.io/cronjob-tutorial/controller-implementation.html#setup
-
+	setupLog := ctrl.Log.WithName("devworkspace-controller-setup")
 	operatorNamespace, err := cluster.GetOperatorNamespace()
 	if err == nil {
 		config.ConfigMapReference.Namespace = operatorNamespace
@@ -348,7 +350,7 @@ func (r *DevWorkspaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	err = config.ControllerCfg.Validate()
 	if err != nil {
-		log.Errorf("Controller configuration is invalid: %s", err)
+		setupLog.Error(err, "Controller configuration is invalid")
 		return err
 	}
 
